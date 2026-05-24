@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Администрирование ПДД</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            min-height: 100vh;
+            background: radial-gradient(circle at 10% 20%, rgba(5, 15, 25, 0.95), rgba(0, 0, 0, 0.98));
+            font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            padding: 24px;
+            position: relative;
+            overflow-x: hidden;
+        }
+        .orb { position: fixed; border-radius: 50%; filter: blur(80px); opacity: 0.4; z-index: -1; animation: float 20s infinite alternate ease-in-out; }
+        .orb1 { width: 50vw; height: 50vw; background: #00c6ff; top: -20vh; left: -20vw; }
+        .orb2 { width: 40vw; height: 40vw; background: #ff4d6d; bottom: -15vh; right: -10vw; animation-duration: 25s; }
+        .orb3 { width: 35vw; height: 35vw; background: #9d4edd; bottom: 20%; left: 20%; animation-duration: 18s; opacity: 0.3; }
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(3%, 5%) scale(1.1); }
+        }
+        .glass-panel {
+            max-width: 1300px;
+            margin: 0 auto;
+            background: rgba(20, 25, 40, 0.55);
+            backdrop-filter: blur(16px);
+            border-radius: 56px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.4), 0 0 0 0.5px rgba(255, 255, 255, 0.08) inset;
+            overflow: hidden;
+        }
+        .questions-container { padding: 1.5rem 2rem; max-height: 60vh; overflow-y: auto; }
+        table { width: 100%; border-collapse: separate; border-spacing: 0 12px; }
+        th { text-align: left; padding: 0 16px; color: #b0c4f0; font-weight: 500; font-size: 0.9rem; }
+        td { padding: 16px; background: rgba(255, 255, 255, 0.04); backdrop-filter: blur(4px); border: 1px solid rgba(255, 255, 255, 0.1); color: #eef5ff; }
+        td:first-child { border-radius: 20px 0 0 20px; }
+        td:last-child { border-radius: 0 20px 20px 0; }
+        .question-text-cell { max-width: 400px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .action-buttons { display: flex-direction: column; gap: 8px; }
+        .btn-sm { padding: 8px 16px; border-radius: 30px; font-weight: 600; font-size: 0.85rem; cursor: pointer; border: none; transition: 0.2s; font-family: inherit; color: white; }
+        .btn-edit { background: linear-gradient(135deg, #4facfe, #00c6ff); box-shadow: 0 2px 8px rgba(0, 198, 255, 0.3); }
+        .btn-delete { background: linear-gradient(135deg, #ff4d6d, #ff2060); box-shadow: 0 2px 8px rgba(255, 32, 96, 0.3); }
+        .btn-add { padding: 12px 28px; border-radius: 60px; font-weight: 700; font-size: 1rem; background: linear-gradient(95deg, #ff8c42, #ff3b6f); border: none; color: white; box-shadow: 0 4px 12px rgba(255, 50, 80, 0.4); cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-add:hover, .btn-sm:hover { transform: scale(0.97); filter: brightness(1.05); }
+        .modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.75); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 1000; visibility: hidden; opacity: 0; transition: 0.2s; }
+        .modal.active { visibility: visible; opacity: 1; }
+        .modal-card { background: rgba(15, 25, 45, 0.95); backdrop-filter: blur(20px); border-radius: 48px; padding: 2rem; width: 90%; max-width: 700px; border: 1px solid rgba(0,255,255,0.4); color: #fff; max-height: 85vh; overflow-y: auto; }
+        .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+        .modal-header h2 { background: linear-gradient(135deg, #fff, #a0d2ff, #4facfe); -webkit-background-clip: text; background-clip: text; color: transparent; font-size: 1.5rem; }
+        .close-btn { width: 32px; height: 32px; background: rgba(255,255,255,0.1); border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 1.2rem; transition: 0.2s; border: 1px solid rgba(255,255,255,0.2); }
+        .close-btn:hover { background: rgba(255,255,255,0.3); }
+        .form-group { margin-bottom: 1.2rem; }
+        .form-label { display: block; margin-bottom: 0.4rem; color: #b0c4f0; font-weight: 500; }
+        .form-control, .form-select { width: 100%; padding: 10px 18px; background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.2); border-radius: 30px; color: #fff; outline: none; font-size: 0.95rem; transition: 0.2s; }
+        .form-control:focus, .form-select:focus { border-color: #4facfe; box-shadow: 0 0 12px rgba(79, 172, 254, 0.3); }
+        .answers-editor { background: rgba(0,0,0,0.2); border-radius: 24px; padding: 1rem; }
+        .answer-row { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+        .answer-row input[type="text"] { flex-grow: 1; }
+        .answer-row .btn-remove-answer { background: rgba(255, 50, 50, 0.3); border: 1px solid rgba(255,255,255,0.2); border-radius: 30px; padding: 6px 12px; color: white; cursor: pointer; }
+        .btn-save { background: linear-gradient(95deg, #ff8c42, #ff3b6f); border: none; color: white; padding: 12px 28px; border-radius: 40px; font-weight: bold; margin-top: 1rem; cursor: pointer; }
+        .toast-notify { position: fixed; bottom: 20px; right: 20px; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); border-radius: 40px; padding: 12px 24px; color: white; z-index: 1100; font-weight: 500; transition: 0.3s; border-left: 5px solid #4facfe; }
+        footer { text-align: center; padding: 1.2rem; font-size: 0.7rem; color: #aab7d4; }
+        .filter-bar { display: flex; gap: 15px; align-items: center; margin-bottom: 20px; flex-wrap: wrap; }
+        .filter-select { background: rgba(255,255,255,0.1); border-radius: 40px; padding: 8px 18px; color: white; border: 1px solid rgba(255,255,255,0.2); }
+        .loading { text-align: center; padding: 40px; color: #aab7d4; }
+        @media (max-width: 700px) { .answer-row { flex-direction: column; align-items: stretch; } }
+
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(30, 40, 60, 0.6);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(100, 150, 220, 0.8);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #4facfe;
+        }
+
+        input[type="radio"],
+        input[type="checkbox"] {
+            accent-color: #4facfe;
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            filter: drop-shadow(0 0 2px rgba(0,0,0,0.5));
+        }
+
+        input[type="radio"] {
+            background-color: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.3);
+        }
+
+        select, select option {
+            background-color: #1a1f2e !important;
+            color: #eef5ff !important;
+            border-color: #4facfe;
+        }
+        select:focus, select option:checked {
+            background: #2a3a5a;
+        }
+
+        input, textarea, .form-control, .form-select {
+            color-scheme: dark;
+        }
+    </style>
+    <div th:replace="~{fragments/header :: header-styles}"></div>
+</head>
+<body>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+<div class="orb orb3"></div>
+
+<div class="glass-panel">
+    <div th:replace="~{fragments/header :: header}"></div>
+
+    <div style="padding: 1rem 2rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+        <div class="filter-bar">
+            <label class="form-label" style="margin:0;">Категория:</label>
+            <select id="categoryFilter" class="filter-select">
+                <option value="ALL">Все категории</option>
+                <option value="A">A (мотоциклы)</option>
+                <option value="B">B (легковые)</option>
+                <option value="C">C (грузовые)</option>
+                <option value="D">D (автобусы)</option>
+            </select>
+        </div>
+        <div style="display: flex; gap: 12px;">
+            <button class="btn-add" id="openAddModalBtn">+ Добавить вопрос</button>
+            <button class="btn-add" id="openKeysModalBtn" style="background: linear-gradient(95deg, #4facfe, #00c6ff);">🔑 Ключи доступа</button>
+            <button class="btn-add" id="openResultsModalBtn" style="background: linear-gradient(95deg, #9d4edd, #7b2cbf);">📊 Результаты экзаменов</button>
+        </div>
+    </div>
+
+    <div class="questions-container" id="questionsTableContainer">
+        <div class="loading">Загрузка вопросов...</div>
+    </div>
+    <footer>Редактирование билетов · все изменения сохраняются мгновенно</footer>
+</div>
+
+<div class="modal" id="questionModal">
+    <div class="modal-card">
+        <div class="modal-header">
+            <h2 id="modalTitle">Новый вопрос</h2>
+            <div class="close-btn" id="closeModalBtn">&times;</div>
+        </div>
+        <form id="questionForm">
+            <input type="hidden" id="questionId" value="">
+            <div class="form-group">
+                <label class="form-label">Текст вопроса</label>
+                <textarea class="form-control" id="questionText" rows="2" required></textarea>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Категория</label>
+                <select class="form-select" id="questionCategory">
+                    <option value="A">A (мотоциклы)</option>
+                    <option value="B" selected>B (легковые)</option>
+                    <option value="C">C (грузовые)</option>
+                    <option value="D">D (автобусы)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Ссылка на изображение (URL, необязательно)</label>
+                <input type="text" class="form-control" id="questionImageUrl" placeholder="/images/questions/znak.png">
+                <div id="imagePreview" style="margin-top:10px; display:none;">
+                    <img src="" alt="Предпросмотр" style="max-width:150px; border-radius:12px;">
+                </div>
+            </div>
+            <div class="form-group answers-editor">
+                <label class="form-label">Варианты ответов (отметьте правильный)</label>
+                <div id="answersContainer"></div>
+                <button type="button" class="btn-sm btn-edit" id="addAnswerBtn" style="margin-top:10px;">+ Добавить ответ</button>
+            </div>
+            <button type="submit" class="btn-save">💾 Сохранить вопрос</button>
+        </form>
+    </div>
+</div>
+
+<div class="modal" id="resultsModal">
+    <div class="modal-card" style="max-width: 1100px;">
+        <div class="modal-header">
+            <h2>Результаты экзаменов</h2>
+            <div class="close-btn" id="closeResultsModalBtn">&times;</div>
+        </div>
+        <div id="resultsTableContainer" style="max-height: 500px; overflow-y: auto;">
+            <div class="loading">Загрузка...</div>
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="keysModal">
+    <div class="modal-card" style="max-width: 900px;">
+        <div class="modal-header">
+            <h2>Управление ключами доступа</h2>
+            <div class="close-btn" id="closeKeysModalBtn">&times;</div>
+        </div>
+        <div style="margin-bottom: 20px; text-align: right;">
+            <button class="btn-sm btn-edit" id="addKeyBtn">+ Добавить ключ</button>
+        </div>
+        <div id="keysTableContainer" style="max-height: 400px; overflow-y: auto;">
+        </div>
+    </div>
+</div>
+
+<div class="modal" id="keyFormModal">
+    <div class="modal-card" style="max-width: 500px;">
+        <div class="modal-header">
+            <h2 id="keyModalTitle">Новый ключ</h2>
+            <div class="close-btn" id="closeKeyFormBtn">&times;</div>
+        </div>
+        <form id="keyForm">
+            <input type="hidden" id="keyId">
+            <div class="form-group">
+                <label class="form-label">Ключ (значение)</label>
+                <input type="text" class="form-control" id="keyValue" required>
+            </div>
+            <div class="form-group">
+                <label class="form-label">Описание</label>
+                <input type="text" class="form-control" id="keyDescription">
+            </div>
+            <div class="form-group">
+                <label class="form-label">Категория</label>
+                <select class="form-select" id="keyCategory">
+                    <option value="A">A (мотоциклы)</option>
+                    <option value="B" selected>B (легковые)</option>
+                    <option value="C">C (грузовые)</option>
+                    <option value="D">D (автобусы)</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="keyActive" checked> Активен (разблокирован)
+                </label>
+            </div>
+            <button type="submit" class="btn-save">Сохранить</button>
+        </form>
+    </div>
+</div>
+
+<script>
+    // ========================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ ==========================
+    let allQuestions = [];        // Массив всех вопросов, загруженных с сервера
+    let currentFilter = 'ALL';    // Текущий фильтр по категории (ALL, A, B, C, D)
+
+    // DOM-элементы для работы с модальным окном вопросов
+    const modal = document.getElementById('questionModal');
+    const modalTitle = document.getElementById('modalTitle');
+    const questionForm = document.getElementById('questionForm');
+    const questionIdInput = document.getElementById('questionId');
+    const questionTextInput = document.getElementById('questionText');
+    const questionCategorySelect = document.getElementById('questionCategory');
+    const questionImageUrlInput = document.getElementById('questionImageUrl');
+    const answersContainer = document.getElementById('answersContainer');
+    const addAnswerBtn = document.getElementById('addAnswerBtn');
+    const openAddModalBtn = document.getElementById('openAddModalBtn');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const questionsTableContainer = document.getElementById('questionsTableContainer');
+    const categoryFilter = document.getElementById('categoryFilter');
+
+    // Элементы для управления ключами и результатами описаны позже в соответствующих блоках.
+
+    // ========================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ==========================
+    /**
+     * Показывает всплывающее уведомление (toast) в правом нижнем углу.
+     * @param {string} text - текст сообщения
+     * @param {boolean} isError - если true, цвет рамки красный, иначе синий
+     */
+    function showMessage(text, isError = false) {
+        let toast = document.querySelector('.toast-notify');
+        if (!toast) {
+            toast = document.createElement('div');
+            toast.className = 'toast-notify';
+            document.body.appendChild(toast);
+        }
+        toast.style.borderLeftColor = isError ? '#ff4d6d' : '#4facfe';
+        toast.innerText = text;
+        toast.style.opacity = '1';
+        setTimeout(() => { toast.style.opacity = '0'; }, 3000);
+    }
+
+    /**
+     * Экранирует специальные HTML-символы для предотвращения XSS-атак.
+     * @param {string} text - исходная строка
+     * @returns {string} безопасная строка
+     */
+    function escapeHtml(text) {
+        if (!text) return '';
+        return text.replace(/[&<>]/g, function(m) {
+            if (m === '&') return '&amp;';
+            if (m === '<') return '&lt;';
+            if (m === '>') return '&gt;';
+            return m;
+        });
+    }
+
+    // ========================== ЗАГРУЗКА И ОТОБРАЖЕНИЕ ВОПРОСОВ ==========================
+    /**
+     * Загружает все вопросы с сервера через GET /api/admin/questions.
+     * Результат сохраняется в allQuestions, после чего вызывается отрисовка таблицы.
+     */
+    async function loadQuestions() {
+        try {
+            const response = await fetch('/api/admin/questions');
+            if (!response.ok) throw new Error('Ошибка загрузки');
+            allQuestions = await response.json();
+            renderFilteredTable();
+        } catch (err) {
+            console.error(err);
+            showMessage('Не удалось загрузить вопросы', true);
+            questionsTableContainer.innerHTML = '<div class="loading">Ошибка загрузки</div>';
+        }
+    }
+
+    /**
+     * Отображает таблицу вопросов с учётом текущего фильтра по категории.
+     * Если фильтр не ALL, оставляются только вопросы с нужной категорией.
+     * Для каждого вопроса показывается ID, текст, категория, превью изображения и кнопки действий.
+     */
+    function renderFilteredTable() {
+        let filtered = allQuestions;
+        if (currentFilter !== 'ALL') {
+            filtered = allQuestions.filter(q => q.category === currentFilter);
+        }
+        if (filtered.length === 0) {
+            questionsTableContainer.innerHTML = '<div class="loading">Нет вопросов в выбранной категории</div>';
+            return;
+        }
+        let html = `<table class="questions-table"><thead><tr>
+        <th>ID</th><th>Вопрос</th><th>Категория</th><th>Изображение</th><th>Действия</th>
+    </tr></thead><tbody>`;
+        filtered.forEach(q => {
+            const hasImage = q.imageUrl && q.imageUrl.trim() !== '';
+            const imageHtml = hasImage
+                ? `<img src="${escapeHtml(q.imageUrl)}" style="width:100px; border-radius:8px;" onerror="this.style.display='none'">`
+                : '<span style="opacity:0.5;">—</span>';
+            html += `<tr>
+            <td>${q.id}</td>
+            <td title="${escapeHtml(q.text)}">${escapeHtml(q.text)}</td>
+            <td>${q.category}</td>
+            <td>${imageHtml}</td>
+            <td class="action-buttons">
+                <button class="btn-sm btn-edit" onclick="openEditModal(${q.id})">✎ Ред.</button>
+                <button class="btn-sm btn-delete" onclick="confirmDelete(${q.id})">✕ Удал.</button>
+            </td>
+        </tr>`;
+        });
+        html += `</tbody></table>`;
+        questionsTableContainer.innerHTML = html;
+    }
+
+    // ========================== МОДАЛЬНОЕ ОКНО ДОБАВЛЕНИЯ / РЕДАКТИРОВАНИЯ ВОПРОСА ==========================
+    /**
+     * Открывает модальное окно для создания нового вопроса.
+     * Очищает все поля формы, скрывает предпросмотр изображения, создаёт две пустые строки ответов.
+     */
+    function openAddModal() {
+        questionIdInput.value = '';
+        modalTitle.textContent = 'Новый вопрос';
+        questionTextInput.value = '';
+        questionCategorySelect.value = 'B';
+        questionImageUrlInput.value = '';
+        const previewDiv = document.getElementById('imagePreview');
+        if (previewDiv) previewDiv.style.display = 'none';
+        renderAnswersEditor([]);
+        modal.classList.add('active');
+    }
+
+    /**
+     * Открывает модальное окно для редактирования существующего вопроса.
+     * Находит вопрос по id в массиве allQuestions, заполняет поля формы и ответы.
+     * @param {number} id - идентификатор вопроса
+     */
+    async function openEditModal(id) {
+        const q = allQuestions.find(q => q.id === id);
+        if (!q) return;
+        questionIdInput.value = q.id;
+        modalTitle.textContent = `Редактирование вопроса #${q.id}`;
+        questionTextInput.value = q.text || '';
+        questionCategorySelect.value = q.category || 'B';
+        questionImageUrlInput.value = q.imageUrl || '';
+        // Показать предпросмотр изображения, если URL задан
+        const previewDiv = document.getElementById('imagePreview');
+        const previewImg = previewDiv?.querySelector('img');
+        if (q.imageUrl && q.imageUrl.trim() !== '') {
+            if (previewImg) previewImg.src = q.imageUrl;
+            if (previewDiv) previewDiv.style.display = 'block';
+        } else {
+            if (previewDiv) previewDiv.style.display = 'none';
+        }
+        const answers = q.answers || [];
+        renderAnswersEditor(answers);
+        modal.classList.add('active');
+    }
+
+    /**
+     * Закрывает модальное окно вопроса.
+     */
+    function closeModal() {
+        modal.classList.remove('active');
+    }
+
+    // ========================== РЕДАКТОР ОТВЕТОВ (динамическое добавление строк) ==========================
+    /**
+     * Отрисовывает редактор ответов на основе переданного массива.
+     * Если массив пуст, создаются две пустые строки.
+     * Каждая строка содержит текстовое поле, радиокнопку выбора правильного ответа и кнопку удаления.
+     * @param {Array} answers - массив объектов ответов (каждый с полями text, correct)
+     */
+    function renderAnswersEditor(answers) {
+        answersContainer.innerHTML = '';
+        if (answers.length === 0) {
+            addAnswerRow('', false);
+            addAnswerRow('', false);
+        } else {
+            answers.forEach((ans) => {
+                addAnswerRow(ans.text || '', ans.correct === true);
+            });
+        }
+    }
+
+    /**
+     * Добавляет одну строку в редактор ответов.
+     * @param {string} text - текст ответа
+     * @param {boolean} correct - является ли этот ответ правильным (определяет состояние радиокнопки)
+     */
+    function addAnswerRow(text = '', correct = false) {
+        const row = document.createElement('div');
+        row.className = 'answer-row';
+        row.innerHTML = `
+        <input type="text" class="form-control answer-text" placeholder="Текст ответа" value="${escapeHtml(text)}" required style="flex:2;">
+        <label style="display:flex;align-items:center;gap:6px;color:#b0c4f0;">
+            <input type="radio" name="correctAnswer" class="answer-correct" ${correct ? 'checked' : ''}>
+            Правильный
+        </label>
+        <button type="button" class="btn-remove-answer" onclick="this.closest('.answer-row').remove()">✕</button>
+    `;
+        answersContainer.appendChild(row);
+    }
+
+    /**
+     * Собирает данные ответов из DOM-структуры редактора.
+     * Проверяет, что отмечен ровно один правильный ответ, и что есть хотя бы два варианта.
+     * @returns {Array} массив объектов {text, correct, sortOrder}
+     * @throws {Error} если не отмечен правильный ответ или меньше двух ответов
+     */
+    function collectAnswersFromForm() {
+        const rows = answersContainer.querySelectorAll('.answer-row');
+        const answers = [];
+        let correctFound = false;
+        rows.forEach(row => {
+            const textInput = row.querySelector('.answer-text');
+            const radioInput = row.querySelector('.answer-correct');
+            if (textInput.value.trim() !== '') {
+                const isCorrect = radioInput.checked;
+                if (isCorrect) correctFound = true;
+                answers.push({
+                    text: textInput.value.trim(),
+                    correct: isCorrect,
+                    sortOrder: answers.length
+                });
+            }
+        });
+        if (!correctFound && answers.length > 0) {
+            throw new Error('Не отмечен правильный ответ');
+        }
+        if (answers.length < 2) {
+            throw new Error('Добавьте минимум два варианта ответа');
+        }
+        return answers;
+    }
+
+    // ========================== СОХРАНЕНИЕ ВОПРОСА (создание/обновление) ==========================
+    /**
+     * Обработчик отправки формы вопроса.
+     * Собирает данные из полей ввода, формирует объект Question и отправляет POST или PUT запрос.
+     * @param {Event} event - событие submit
+     */
+    async function saveQuestion(event) {
+        event.preventDefault();
+        try {
+            const answers = collectAnswersFromForm();
+            const id = questionIdInput.value;
+            const questionData = {
+                text: questionTextInput.value,
+                category: questionCategorySelect.value,
+                imageUrl: questionImageUrlInput.value || null,
+                answers: answers
+            };
+            let url = '/api/admin/questions';
+            let method = 'POST';
+            if (id) {
+                url = `/api/admin/questions/${id}`;
+                method = 'PUT';
+            }
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(questionData)
+            });
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(errText || 'Ошибка сохранения');
+            }
+            showMessage(id ? 'Вопрос обновлён' : 'Вопрос добавлен');
+            closeModal();
+            await loadQuestions(); // обновить таблицу
+        } catch (err) {
+            console.error(err);
+            showMessage(err.message || 'Ошибка сохранения', true);
+        }
+    }
+
+    /**
+     * Удаляет вопрос после подтверждения.
+     * @param {number} id - идентификатор вопроса
+     */
+    async function confirmDelete(id) {
+        try {
+            const response = await fetch(`/api/admin/questions/${id}`, { method: 'DELETE' });
+            if (!response.ok) throw new Error('Ошибка удаления');
+            showMessage('Вопрос удалён');
+            await loadQuestions();
+        } catch (err) {
+            showMessage('Не удалось удалить вопрос', true);
+        }
+    }
+
+    /**
+     * Обработчик изменения фильтра категории.
+     * Перерисовывает таблицу с учётом нового фильтра.
+     */
+    function onFilterChange() {
+        currentFilter = categoryFilter.value;
+        renderFilteredTable();
+    }
+
+    // ========================== ИНИЦИАЛИЗАЦИЯ СОБЫТИЙ ДЛЯ ВОПРОСОВ ==========================
+    openAddModalBtn.addEventListener('click', openAddModal);
+    closeModalBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+    questionForm.addEventListener('submit', saveQuestion);
+    addAnswerBtn.addEventListener('click', () => addAnswerRow('', false));
+    categoryFilter.addEventListener('change', onFilterChange);
+
+    // Первоначальная загрузка вопросов
+    loadQuestions();
+
+    // ========================== УПРАВЛЕНИЕ КЛЮЧАМИ ДОСТУПА ==========================
+    let allKeys = []; // массив всех ключей
+    const keysModal = document.getElementById('keysModal');
+    const closeKeysModalBtn = document.getElementById('closeKeysModalBtn');
+    const openKeysModalBtn = document.getElementById('openKeysModalBtn');
+    const keysTableContainer = document.getElementById('keysTableContainer');
+    const keyFormModal = document.getElementById('keyFormModal');
+    const closeKeyFormBtn = document.getElementById('closeKeyFormBtn');
+    const addKeyBtn = document.getElementById('addKeyBtn');
+    const keyForm = document.getElementById('keyForm');
+    const keyIdInput = document.getElementById('keyId');
+    const keyValueInput = document.getElementById('keyValue');
+    const keyDescriptionInput = document.getElementById('keyDescription');
+    const keyCategorySelect = document.getElementById('keyCategory');
+    const keyActiveCheckbox = document.getElementById('keyActive');
+
+    /**
+     * Загружает список всех ключей с сервера (GET /api/admin/keys).
+     */
+    async function loadKeys() {
+        try {
+            const response = await fetch('/api/admin/keys');
+            allKeys = await response.json();
+            renderKeysTable();
+        } catch (err) {
+            showMessage('Ошибка загрузки ключей', true);
+        }
+    }
+
+    /**
+     * Отображает таблицу ключей. Каждая строка содержит кнопки редактирования, удаления и (при необходимости) разблокировки.
+     */
+    function renderKeysTable() {
+        if (allKeys.length === 0) {
+            keysTableContainer.innerHTML = '<div class="loading">Нет ключей</div>';
+            return;
+        }
+        let html = `<table style="width:100%"><thead><tr>
+        <th>ID</th><th>Ключ</th><th>Описание</th><th>Категория</th><th>Статус</th><th>Действия</th>
+    </tr></thead><tbody>`;
+        allKeys.forEach(k => {
+            html += `<tr>
+            <td>${k.id}</td>
+            <td>${escapeHtml(k.keyValue)}</td>
+            <td>${escapeHtml(k.description || '')}</td>
+            <td>${k.category}</td>
+            <td>${k.active ? '✅ Активен' : '🔴 Заблокирован'}</td>
+            <td class="action-buttons">
+                <button class="btn-sm btn-edit" onclick="editKey(${k.id})">✎ Ред.</button>
+                <button class="btn-sm btn-delete" onclick="deleteKey(${k.id})">✕ Удал.</button>
+                ${!k.active ? `<button class="btn-sm btn-edit" onclick="unlockKey(${k.id})">🔓 Разблок.</button>` : ''}
+            </td>
+        </tr>`;
+        });
+        html += `</tbody></table>`;
+        keysTableContainer.innerHTML = html;
+    }
+
+    /**
+     * Открывает модальное окно добавления нового ключа. Очищает форму.
+     */
+    function openAddKeyForm() {
+        keyIdInput.value = '';
+        keyValueInput.value = '';
+        keyDescriptionInput.value = '';
+        keyCategorySelect.value = 'B';
+        keyActiveCheckbox.checked = true;
+        document.getElementById('keyModalTitle').textContent = 'Новый ключ';
+        keyFormModal.classList.add('active');
+    }
+
+    /**
+     * Открывает форму редактирования существующего ключа, заполняя её данными.
+     * @param {number} id - идентификатор ключа
+     */
+    function editKey(id) {
+        const key = allKeys.find(k => k.id === id);
+        if (!key) return;
+        keyIdInput.value = key.id;
+        keyValueInput.value = key.keyValue;
+        keyDescriptionInput.value = key.description || '';
+        keyCategorySelect.value = key.category;
+        keyActiveCheckbox.checked = key.active;
+        document.getElementById('keyModalTitle').textContent = 'Редактирование ключа';
+        keyFormModal.classList.add('active');
+    }
+
+    /**
+     * Активирует (разблокирует) ключ, устанавливая active = true, и отправляет PUT-запрос.
+     * @param {number} id - идентификатор ключа
+     */
+    async function unlockKey(id) {
+        const key = allKeys.find(k => k.id === id);
+        if (!key) return;
+        key.active = true;
+        try {
+            const response = await fetch(`/api/admin/keys/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(key)
+            });
+            if (!response.ok) throw new Error();
+            showMessage('Ключ разблокирован');
+            loadKeys();
+        } catch (err) {
+            showMessage('Ошибка разблокировки', true);
+        }
+    }
+
+    /**
+     * Удаляет ключ без дополнительного подтверждения.
+     * @param {number} id - идентификатор ключа
+     */
+    async function deleteKey(id) {
+        try {
+            await fetch(`/api/admin/keys/${id}`, { method: 'DELETE' });
+            showMessage('Ключ удалён');
+            loadKeys();
+        } catch (err) {
+            showMessage('Ошибка удаления', true);
+        }
+    }
+
+    /**
+     * Сохраняет ключ (создание или обновление) через POST или PUT.
+     * @param {Event} event - событие submit
+     */
+    async function saveKey(event) {
+        event.preventDefault();
+        const id = keyIdInput.value;
+        const keyData = {
+            keyValue: keyValueInput.value.trim(),
+            description: keyDescriptionInput.value.trim(),
+            category: keyCategorySelect.value,
+            active: keyActiveCheckbox.checked
+        };
+        let url = '/api/admin/keys';
+        let method = 'POST';
+        if (id) {
+            url = `/api/admin/keys/${id}`;
+            method = 'PUT';
+            keyData.id = parseInt(id);
+        }
+        try {
+            const response = await fetch(url, {
+                method: method,
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(keyData)
+            });
+            if (!response.ok) throw new Error();
+            showMessage(id ? 'Ключ обновлён' : 'Ключ создан');
+            keyFormModal.classList.remove('active');
+            loadKeys();
+        } catch (err) {
+            showMessage('Ошибка сохранения ключа', true);
+        }
+    }
+
+    // ========================== ИНИЦИАЛИЗАЦИЯ СОБЫТИЙ ДЛЯ КЛЮЧЕЙ ==========================
+    openKeysModalBtn.onclick = () => { keysModal.classList.add('active'); loadKeys(); };
+    closeKeysModalBtn.onclick = () => keysModal.classList.remove('active');
+    closeKeyFormBtn.onclick = () => keyFormModal.classList.remove('active');
+    addKeyBtn.onclick = openAddKeyForm;
+    keyForm.onsubmit = saveKey;
+    keysModal.onclick = (e) => { if (e.target === keysModal) keysModal.classList.remove('active'); };
+    keyFormModal.onclick = (e) => { if (e.target === keyFormModal) keyFormModal.classList.remove('active'); };
+
+    // ========================== УПРАВЛЕНИЕ РЕЗУЛЬТАТАМИ ЭКЗАМЕНОВ ==========================
+    let allResults = [];
+    const resultsModal = document.getElementById('resultsModal');
+    const closeResultsModalBtn = document.getElementById('closeResultsModalBtn');
+    const openResultsModalBtn = document.getElementById('openResultsModalBtn');
+    const resultsTableContainer = document.getElementById('resultsTableContainer');
+
+    /**
+     * Загружает все результаты экзаменов (GET /api/admin/results).
+     */
+    async function loadResults() {
+        try {
+            const response = await fetch('/api/admin/results');
+            if (!response.ok) throw new Error('Ошибка загрузки');
+            allResults = await response.json();
+            renderResultsTable();
+        } catch (err) {
+            console.error(err);
+            resultsTableContainer.innerHTML = '<div class="loading">Ошибка загрузки результатов</div>';
+        }
+    }
+
+    /**
+     * Отображает таблицу результатов с колонками: ID, ключ, категория, баллы, всего вопросов, процент, сдал/не сдал, дата.
+     */
+    function renderResultsTable() {
+        if (allResults.length === 0) {
+            resultsTableContainer.innerHTML = '<div class="loading">Нет пройденных экзаменов</div>';
+            return;
+        }
+        let html = `<table style="width:100%"><thead><tr>
+        <th>ID</th><th>Ключ</th><th>Категория</th><th>Баллы</th><th>Всего</th><th>Процент</th><th>Сдал?</th><th>Дата</th><th>Действия</th>
+    </tr></thead><tbody>`;
+        allResults.forEach(r => {
+            const percent = Math.round((r.score / r.totalQuestions) * 100);
+            const passed = r.passed ? '✅ Да' : '❌ Нет';
+            const category = r.accessKey?.category || '—';
+            const keyValue = r.accessKey?.keyValue || '—';
+            html += `<tr>
+            <td>${r.id}</td>
+            <td>${escapeHtml(keyValue)}</td>
+            <td>${category}</td>
+            <td>${r.score}</td>
+            <td>${r.totalQuestions}</td>
+            <td>${percent}%</td>
+            <td>${passed}</td>
+            <td>${new Date(r.examDate).toLocaleString()}</td>
+            <td class="action-buttons">
+                <button class="btn-sm btn-delete" onclick="deleteResult(${r.id})">✕ Удал.</button>
+            </td>
+        </tr>`;
+        });
+        html += `</tbody></table>`;
+        resultsTableContainer.innerHTML = html;
+    }
+
+    /**
+     * Удаляет запись о результате экзамена.
+     * @param {number} id - идентификатор результата
+     */
+    async function deleteResult(id) {
+        try {
+            await fetch(`/api/admin/results/${id}`, { method: 'DELETE' });
+            showMessage('Запись удалена');
+            loadResults();
+        } catch (err) {
+            showMessage('Ошибка удаления', true);
+        }
+    }
+
+    // ========================== ИНИЦИАЛИЗАЦИЯ ДЛЯ РЕЗУЛЬТАТОВ ==========================
+    if (openResultsModalBtn) {
+        openResultsModalBtn.onclick = () => {
+            resultsModal.classList.add('active');
+            loadResults();
+        };
+    }
+    if (closeResultsModalBtn) closeResultsModalBtn.onclick = () => resultsModal.classList.remove('active');
+    if (resultsModal) resultsModal.onclick = (e) => { if (e.target === resultsModal) resultsModal.classList.remove('active'); };
+</script>
+</body>
+</html>

@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>О нас | ПДД 2026</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            min-height: 100vh;
+            background: radial-gradient(circle at 10% 20%, rgba(5, 15, 25, 0.95), rgba(0, 0, 0, 0.98));
+            font-family: 'Inter', system-ui, sans-serif;
+            padding: 24px;
+        }
+        .orb {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.4;
+            z-index: -1;
+            animation: float 20s infinite alternate;
+        }
+        .orb1 { width: 50vw; height: 50vw; background: #00c6ff; top: -20vh; left: -20vw; }
+        .orb2 { width: 40vw; height: 40vw; background: #ff4d6d; bottom: -15vh; right: -10vw; }
+        @keyframes float {
+            0% { transform: translate(0, 0) scale(1); }
+            100% { transform: translate(3%, 5%) scale(1.1); }
+        }
+        .glass-panel {
+            max-width: 900px;
+            margin: 0 auto;
+            background: rgba(20, 25, 40, 0.55);
+            backdrop-filter: blur(16px);
+            border-radius: 56px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            overflow: hidden;
+        }
+        .content {
+            padding: 2rem;
+            color: #eef5ff;
+        }
+        h2 {
+            font-size: 2rem;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #fff, #a0d2ff);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        p {
+            margin-bottom: 1rem;
+            line-height: 1.5;
+        }
+        footer {
+            text-align: center;
+            padding: 1rem;
+            font-size: 0.7rem;
+            color: #aab7d4;
+        }
+    </style>
+    <div th:replace="~{fragments/header :: header-styles}"></div>
+</head>
+<body>
+<div class="orb orb1"></div>
+<div class="orb orb2"></div>
+
+<div class="glass-panel">
+    <div th:replace="~{fragments/header :: header}"></div>
+    <div class="content">
+        <h2><i class="fas fa-book"></i></h2>
+        <p>Это современная интерактивная платформа для подготовки к экзамену ПДД 2026. Мы объединили актуальные билеты, динамическую адаптацию интерфейса и удобную админ-панель для инструкторов.</p>
+        <p>🔹 <strong>Экзамен:</strong> 20 вопросов, таймер 20 минут, проходной балл 80%.</p>
+        <p>🔹 <strong>Администрирование:</strong> полный CRUD вопросов, поддержка изображений, категории (A, B, C, D).</p>
+        <p>🔹 <strong>Безопасность:</strong> вход по ключу доступа.</p>
+        <p>Разработано с ❤️ для будущих водителей.</p>
+    </div>
+    <footer>2026 · версия 2.0</footer>
+</div>
+</body>
+</html>

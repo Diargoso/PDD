@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:fragment="header-styles">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        .global-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.8rem 2rem;
+            background: rgba(10, 15, 27, 0.7);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .global-header .logo {
+            font-size: 1.5rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, #fff, #a0d2ff, #4facfe);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .global-header nav {
+            display: flex;
+            gap: 20px;
+        }
+        .global-header .nav-link {
+            color: #eef5ff;
+            text-decoration: none;
+            font-weight: 500;
+            padding: 8px 18px;
+            border-radius: 40px;
+            transition: 0.2s;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .global-header .nav-link:hover {
+            background: rgba(79, 172, 254, 0.3);
+            border-color: #4facfe;
+        }
+        .global-header .nav-link.active {
+            background: linear-gradient(95deg, #ff8c42, #ff3b6f);
+            border-color: transparent;
+            color: white;
+        }
+        @media (max-width: 600px) {
+            .global-header { flex-direction: column; text-align: center; }
+        }
+    </style>
+</head>
+
+<div th:fragment="header" class="global-header">
+    <div class="logo"><i class="fas fa-car"></i> DRIVE 2.0 | ПДД</div>
+    <nav>
+        <a th:href="@{/login}" class="nav-link" th:classappend="${currentPage == 'login'} ? 'active' : ''">Зайти под другим пользователем</a>
+        <a th:href="@{/about}" class="nav-link" th:classappend="${currentPage == 'about'} ? 'active' : ''">О нас</a>
+    </nav>
+</div>
