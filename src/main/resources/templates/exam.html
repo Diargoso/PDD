@@ -376,6 +376,9 @@
 
 <script>
     // ========================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ СОСТОЯНИЯ ЭКЗАМЕНА ==========================
+
+    const STORAGE_KEY = 'exam_state';
+    let examStartTimestamp = null;   // время начала (или последнего обновления) экзамена
     const TOTAL = QUESTIONS_DATA.length;            // общее количество вопросов
     let userAnswers = new Array(TOTAL).fill(null); // массив выбранных индексов (-1 или null для неотвеченных)
     let currentIndex = 0;                          // индекс текущего отображаемого вопроса (0-based)
@@ -554,18 +557,125 @@
         });
     }
 
+    // ========================== УПРАВЛЕНИЕ ТАЙМЕРОМ ==========================
+    function stopTimer() {
+        if (timerInterval) {
+            clearInterval(timerInterval);
+            timerInterval = null;
+        }
+    }
+
+    // -------------------- Сохранение/восстановление состояния --------------------
+    function saveExamState() {
+        const state = {
+            startTimestamp: examStartTimestamp,
+            remainingSeconds: timeSeconds,
+            answers: userAnswers,
+            currentIndex: currentIndex
+        };
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function loadExamState() {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return null;
+        try { return JSON.parse(raw); } catch { return null; }
+    }
+
+    function clearExamState() {
+        localStorage.removeItem(STORAGE_KEY);
+    }
+
+    // -------------------- Инициализация таймера с восстановлением --------------------
+    function initTimer() {
+        const saved = loadExamState();
+        const now = Date.now();
+
+        if (saved && saved.startTimestamp) {
+            // Вычисляем оставшееся время
+            const elapsedSeconds = (now - saved.startTimestamp) / 1000;
+            const remaining = saved.remainingSeconds - elapsedSeconds;
+            if (remaining <= 0) {
+                // Время вышло – завершаем экзамен
+                finishExam();
+                return;
+            }
+            timeSeconds = Math.floor(remaining);
+            // Восстанавливаем ответы и текущий индекс (если нужно)
+            if (saved.answers && saved.answers.length === TOTAL) {
+                userAnswers = saved.answers;
+            }
+            if (saved.currentIndex !== undefined && saved.currentIndex < TOTAL) {
+                currentIndex = saved.currentIndex;
+            }
+            // Обновляем стартовую метку, чтобы дальнейшие вычисления шли от текущего момента
+            examStartTimestamp = now;
+        } else {
+            // Новый экзамен
+            examStartTimestamp = now;
+            timeSeconds = 20 * 60;
+            // Сбрасываем ответы (если нужно) – обычно они уже пустые
+            userAnswers = new Array(TOTAL).fill(null);
+            currentIndex = 0;
+        }
+
+        // Сохраняем начальное состояние
+        saveExamState();
+        updateTimerDisplay();
+
+        // Запускаем интервал
+        if (timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            if (examSubmitted) return;
+            timeSeconds--;
+            if (timeSeconds <= 0) {
+                clearInterval(timerInterval);
+                finishExam();
+            } else {
+                updateTimerDisplay();
+                // Каждую секунду обновляем сохранённое состояние
+                saveExamState();
+            }
+        }, 1000);
+    }
+
+    /**
+     * Обновляет отображение минут и секунд на странице.
+     */
+    function updateTimerDisplay() {
+        const mins = Math.floor(timeSeconds / 60);
+        const secs = timeSeconds % 60;
+        timerMinSpan.innerText = mins < 10 ? "0" + mins : mins;
+        timerSecSpan.innerText = secs < 10 ? "0" + secs : secs;
+    }
+
     // ========================== СБРОС ЭКЗАМЕНА ==========================
     /**
      * Полностью сбрасывает состояние экзамена: обнуляет ответы, возвращает таймер, переходит к первому вопросу.
      */
     function resetExam() {
         stopTimer();
+        clearExamState();                // очищаем сохранённое состояние
         userAnswers.fill(null);
         currentIndex = 0;
         examSubmitted = false;
         timeSeconds = 20 * 60;
+        examStartTimestamp = Date.now(); // обновляем время старта
+        saveExamState();                 // сохраняем новое состояние
         updateTimerDisplay();
-        startTimer();
+        // Запускаем таймер заново
+        if (timerInterval) clearInterval(timerInterval);
+        timerInterval = setInterval(() => {
+            if (examSubmitted) return;
+            timeSeconds--;
+            if (timeSeconds <= 0) {
+                clearInterval(timerInterval);
+                finishExam();
+            } else {
+                updateTimerDisplay();
+                saveExamState();
+            }
+        }, 1000);
         renderCurrentQuestion();
         renderPalette();
         updateStats();
@@ -579,6 +689,7 @@
         if (examSubmitted) return;
         examSubmitted = true;
         stopTimer();
+        clearExamState();   // удаляем состояние, так как экзамен завершён
 
         const answersPayload = userAnswers.map(ans => (ans !== null ? ans : -1));
 
@@ -613,37 +724,6 @@
         resultModal.classList.remove("active");
     }
 
-    // ========================== ТАЙМЕР ==========================
-    /**
-     * Запускает обратный отсчёт времени. При достижении 0 автоматически завершает экзамен.
-     */
-    function startTimer() {
-        if (timerInterval) clearInterval(timerInterval);
-        timerInterval = setInterval(() => {
-            if (examSubmitted) return;
-            if (timeSeconds <= 0) {
-                clearInterval(timerInterval);
-                finishExam();
-            } else {
-                timeSeconds--;
-                updateTimerDisplay();
-            }
-        }, 1000);
-    }
-    function stopTimer() {
-        if (timerInterval) clearInterval(timerInterval);
-        timerInterval = null;
-    }
-    /**
-     * Обновляет отображение минут и секунд на странице.
-     */
-    function updateTimerDisplay() {
-        const mins = Math.floor(timeSeconds / 60);
-        const secs = timeSeconds % 60;
-        timerMinSpan.innerText = mins < 10 ? "0" + mins : mins;
-        timerSecSpan.innerText = secs < 10 ? "0" + secs : secs;
-    }
-
     /**
      * Экранирует HTML-спецсимволы в тексте ответов.
      * @param {string} str - исходная строка
@@ -671,7 +751,7 @@
     renderPalette();
     renderCurrentQuestion();
     updateStats();
-    startTimer();
+    initTimer();   // правильная инициализация с восстановлением
 </script>
 </body>
 </html>
