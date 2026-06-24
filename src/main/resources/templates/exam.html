@@ -375,10 +375,6 @@
 </script>
 
 <script>
-    // ========================== ПОЛУЧЕНИЕ ДАННЫХ ОТ СЕРВЕРА ==========================
-    // QUESTIONS_DATA передаётся из Thymeleaf через th:inline="javascript"
-    const QUESTIONS_DATA = /*[[${questions}]]*/ []; // массив объектов Question (с ответами)
-
     // ========================== ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ СОСТОЯНИЯ ЭКЗАМЕНА ==========================
     const TOTAL = QUESTIONS_DATA.length;            // общее количество вопросов
     let userAnswers = new Array(TOTAL).fill(null); // массив выбранных индексов (-1 или null для неотвеченных)
